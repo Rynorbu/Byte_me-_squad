@@ -348,6 +348,12 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     continue-on-error: true
     steps:
+      - name: Set up Docker authentication
+        run: |
+          mkdir -p ~/.docker
+          echo '{"auths":{"docker.io":{"auth":"'$(echo -n "${{ secrets.DOCKER_HUB_USERNAME }}:${{ secrets.DOCKER_HUB_PASSWORD }}" | base64)'"}}}' > ~/.docker/config.json
+          chmod 600 ~/.docker/config.json
+
       - name: Run OWASP ZAP Scan
         uses: zaproxy/action-baseline@v0.7.0
         with:
