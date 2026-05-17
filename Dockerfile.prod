@@ -1,22 +1,8 @@
-# Production Dockerfile for Next.js Application
+# Production Dockerfile for Vite + React Application
 # Multi-stage build to optimize image size and security
 
-# Stage 1: Dependencies
-FROM node:18-alpine AS deps
-WORKDIR /app
-
-# Install build dependencies
-RUN apk add --no-cache python3 make g++
-
-# Copy package files
-COPY package.json package-lock.json ./
-
-# Install production dependencies
-RUN npm ci --only=production && \
-    npm cache clean --force
-
-# Stage 2: Builder
-FROM node:18-alpine AS builder
+# Stage 1: Builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies
@@ -31,45 +17,38 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build Next.js application
+# Build Vite application
 RUN npm run build
 
-# Stage 3: Runtime
-FROM node:18-alpine AS runner
+# Stage 2: Runtime (using nginx to serve static files)
+FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
+# Install dumb-init and simple-http-server for serving static files
 RUN apk add --no-cache dumb-init
 
+# Install a lightweight HTTP server (alternatively can use nginx)
+RUN npm install -g serve
+
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
+RUN addgroup -g 1001 -S appuser && \
+    adduser -S appuser -u 1001
 
-# Copy built application and public assets from builder
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-
-# Copy production dependencies
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+# Copy built application from builder
+COPY --from=builder --chown=appuser:appuser /app/dist ./dist
 
 # Switch to non-root user
-USER nextjs
+USER appuser
 
 # Expose port
 EXPOSE 3000
 
-# Set environment variables
-ENV NODE_ENV=production \
-    HOSTNAME=0.0.0.0 \
-    PORT=3000
-
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+    CMD node -e "require('http').get('http://localhost:3000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start Next.js application
-CMD ["node", "server.js"]
+# Start serving the application
+CMD ["serve", "-s", "dist", "-l", "3000"]
