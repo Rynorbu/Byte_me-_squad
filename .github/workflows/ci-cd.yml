@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, develop]
 
+permissions:
+  contents: read
+  security-events: write
+
 env:
   REGISTRY: docker.io
   IMAGE_NAME: ${{ secrets.DOCKER_HUB_USERNAME }}/byte-me-app
@@ -153,7 +157,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy Filesystem Results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-fs-results.sarif'
@@ -246,7 +250,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy Docker Results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-docker-results.sarif'
