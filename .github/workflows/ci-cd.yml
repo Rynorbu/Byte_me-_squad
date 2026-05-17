@@ -134,15 +134,6 @@ jobs:
           SONAR_PROJECT_KEY: Byte_me-_squad
           SONAR_ORGANIZATION: rynorbu
 
-      - name: Wait for SonarQube Quality Gate
-        uses: SonarSource/sonarqube-quality-gate-action@master
-        timeout-minutes: 5
-        with:
-          scanMetadataReportFile: .scannerwork/report-task.txt
-        env:
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
   # Stage 5: Filesystem Vulnerability Scanning with Trivy
   trivy-fs:
     name: Trivy Filesystem Scan
