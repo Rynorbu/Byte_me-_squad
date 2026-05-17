@@ -54,11 +54,10 @@ export default function CustomerDashboard({ setView, onListingClick }: CustomerD
   }
 
   useEffect(() => {
-    if (!user) { setView('signin'); return; }
-    setFullName(profile?.full_name ?? '');
-    setPhone(profile?.phone ?? '');
-    setCity(profile?.city ?? '');
-    setBio(profile?.bio ?? '');
+    if (!user) {
+      setView('signin');
+      return;
+    }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profile?.id]);
