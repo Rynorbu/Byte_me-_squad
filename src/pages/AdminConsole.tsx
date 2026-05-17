@@ -56,7 +56,7 @@ export default function AdminConsole({ setView }: AdminConsoleProps) {
       if (reportsData && reportsData.length > 0) setReports(reportsData as Report[]);
     }
     load();
-  }, [profile?.id]);
+  }, [profile]);
 
   /* ── Access guard ── */
   if (!profile || profile.role !== 'admin') {

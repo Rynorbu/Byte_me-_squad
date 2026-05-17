@@ -58,8 +58,8 @@ export default function CustomerDashboard({ setView, onListingClick }: CustomerD
       setView('signin');
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profile?.id]);
 
   async function removeSaved(listingId: string) {
