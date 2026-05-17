@@ -12,7 +12,7 @@ env:
   REGISTRY_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
   REGISTRY_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
   SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-  SONAR_LOGIN: ${{ secrets.SONAR_LOGIN }}
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
 jobs:
   # Stage 1: Clone and Setup
@@ -130,7 +130,7 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@master
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_LOGIN: ${{ secrets.SONAR_LOGIN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_PROJECT_KEY: Byte_me-_squad
           SONAR_ORGANIZATION: ryrorbu
 
@@ -139,7 +139,7 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_LOGIN: ${{ secrets.SONAR_LOGIN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   # Stage 5: Filesystem Vulnerability Scanning with Trivy
   trivy-fs:
