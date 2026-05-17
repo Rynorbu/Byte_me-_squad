@@ -320,7 +320,7 @@ jobs:
 
       - name: Deploy to Render
         run: |
-          curl -X POST https://api.render.com/deploy/srv-${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
         continue-on-error: false
 
       - name: Wait for deployment
@@ -340,14 +340,23 @@ jobs:
           echo "❌ Deployment verification failed"
           exit 1
 
-  # Stage 10: OWASP ZAP Dynamic Security Scanning (Optional - runs only on PRs)
+  # Stage 10: OWASP ZAP Dynamic Security Scanning
   owasp-zap:
     name: OWASP ZAP Dynamic Security Scan
     runs-on: ubuntu-latest
     needs: deploy-render
-    if: github.event_name == 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     continue-on-error: true
     steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Pre-pull OWASP ZAP image
+        run: docker pull owasp/zap2docker-stable:latest
+
       - name: Run OWASP ZAP Scan
         uses: zaproxy/action-baseline@v0.7.0
         with:
