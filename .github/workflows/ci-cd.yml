@@ -132,7 +132,7 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_PROJECT_KEY: Byte_me-_squad
-          SONAR_ORGANIZATION: ryrorbu
+          SONAR_ORGANIZATION: rynorbu
 
       - name: Wait for SonarQube Quality Gate
         uses: SonarSource/sonarqube-quality-gate-action@master
