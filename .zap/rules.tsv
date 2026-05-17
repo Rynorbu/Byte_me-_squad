@@ -1,0 +1,185 @@
+# OWASP ZAP Baseline Rules Configuration
+# Format: <plugin-id><tab><alert-level>
+# Alert levels: PASS (suppress), WARN (warning), FAIL (error/stop)
+
+# Web Server Configuration
+10020	WARN
+10021	WARN
+
+# Insecure HTTP Methods
+10015	WARN
+
+# Missing HTTP Security Headers
+10023	WARN
+10024	WARN
+10025	WARN
+10026	WARN
+10027	WARN
+10028	WARN
+10029	WARN
+10030	WARN
+
+# Weak Authentication
+10035	WARN
+10037	WARN
+
+# CORS Issues
+10040	WARN
+10041	WARN
+10042	WARN
+
+# CSRF Protection
+10047	WARN
+10048	WARN
+
+# Cookie Security
+10050	WARN
+10051	WARN
+10052	WARN
+
+# Application Errors
+10025	WARN
+
+# SQL Injection
+40018	WARN
+40019	WARN
+40020	WARN
+
+# Cross Site Scripting
+40012	WARN
+40014	WARN
+40016	WARN
+40017	WARN
+
+# Remote Code Execution
+10001	WARN
+
+# XXE Injection
+90023	WARN
+
+# Path Traversal
+30001	WARN
+30002	WARN
+
+# Weak Cryptography
+10047	WARN
+
+# Information Disclosure
+10024	WARN
+10025	WARN
+
+# Improper Input Validation
+10107	WARN
+10038	WARN
+
+# Sensitive Data Exposure
+10023	WARN
+10024	WARN
+10025	WARN
+
+# Broken Authentication
+40013	WARN
+
+# Insecure Deserialization
+90035	WARN
+
+# Component Vulnerability
+90004	WARN
+
+# Insufficient Logging
+10019	WARN
+10020	WARN
+
+# Java Deserialization
+90035	WARN
+
+# Expression Language Injection
+90025	WARN
+90026	WARN
+
+# OS Command Injection
+90020	WARN
+
+# Insecure HTTP Method
+10015	WARN
+
+# Misconfigured CORS
+10040	WARN
+10041	WARN
+10042	WARN
+
+# Weak SSL/TLS
+90002	WARN
+
+# Cookie Flags
+10056	WARN
+10057	WARN
+
+# Session Fixation
+10024	WARN
+
+# Username Enumeration
+90024	WARN
+
+# Browser Cache Leakage
+10023	WARN
+
+# Parameter Pollution
+10026	WARN
+
+# Hidden File Discovery
+10020	WARN
+
+# Generic Error Page
+10025	WARN
+
+# Directory Listing
+10097	WARN
+
+# Source Code Disclosure
+10045	WARN
+
+# Buffer Overflow
+90027	WARN
+
+# Format String Injection
+90028	WARN
+
+# LDAP Injection
+40015	WARN
+
+# XPath Injection
+90031	WARN
+
+# Script Injection
+90019	WARN
+
+# Server-Side Include
+90082	WARN
+
+# Response Splitting
+90033	WARN
+
+# HTTP Response Smuggling
+90034	WARN
+
+# RTSP Response Smuggling
+90037	WARN
+
+# HTTP Parameter Pollution
+10026	WARN
+
+# Open Redirect
+10036	WARN
+
+# Unvalidated Redirect
+10023	WARN
+
+# Backup File Discovery
+10040	WARN
+
+# Private IP Disclosure
+10017	WARN
+
+# Logout CSRF
+10022	WARN
