@@ -36,6 +36,10 @@ export default function AdminConsole({ setView }: AdminConsoleProps) {
 
   /* ── Fetch real data ── */
   useEffect(() => {
+    if (profile && profile.role !== 'admin') {
+      return;
+    }
+
     async function load() {
       const [pendingRes, totalRes, usersRes, reportsRes] = await Promise.all([
         supabase.from('listings').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
@@ -64,7 +68,7 @@ export default function AdminConsole({ setView }: AdminConsoleProps) {
       if (reportsData && reportsData.length > 0) setReports(reportsData as Report[]);
     }
     load();
-  }, []);
+  }, [profile]);
 
   async function approveQueue(listingId: string) {
     await supabase.from('listings').update({ status: 'live', verified: true }).eq('id', listingId);

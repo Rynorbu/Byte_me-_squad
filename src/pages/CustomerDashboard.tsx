@@ -29,16 +29,6 @@ export default function CustomerDashboard({ setView, onListingClick }: CustomerD
   const [saving, setSaving]     = useState(false);
   const [saveMsg, setSaveMsg]   = useState('');
 
-  useEffect(() => {
-    if (!user) { setView('signin'); return; }
-    setFullName(profile?.full_name ?? '');
-    setPhone(profile?.phone ?? '');
-    setCity(profile?.city ?? '');
-    setBio(profile?.bio ?? '');
-    load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, profile?.id]);
-
   async function load() {
     if (!user) return;
     setLoading(true);
@@ -62,6 +52,16 @@ export default function CustomerDashboard({ setView, onListingClick }: CustomerD
     if (inqRes.data) setInquiries(inqRes.data as (Inquiry & { listing?: Listing })[]);
     setLoading(false);
   }
+
+  useEffect(() => {
+    if (!user) { setView('signin'); return; }
+    setFullName(profile?.full_name ?? '');
+    setPhone(profile?.phone ?? '');
+    setCity(profile?.city ?? '');
+    setBio(profile?.bio ?? '');
+    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, profile?.id]);
 
   async function removeSaved(listingId: string) {
     await supabase
