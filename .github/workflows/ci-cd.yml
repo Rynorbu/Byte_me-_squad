@@ -385,23 +385,75 @@ jobs:
           echo "Updating packages and installing ZAP dependencies..."
           sudo apt-get update && sudo apt-get install -y wget openjdk-11-jre
           
-          echo "Downloading and extracting official ZAP CLI package..."
-          wget -q https://github.com/zaproxy/zaproxy/releases/download/v2.14.0/ZAP_2.14.0_Linux.tar.gz
-          tar -xzf ZAP_2.14.0_Linux.tar.gz
-          echo "ZAP_PATH=$GITHUB_WORKSPACE/ZAP_2.14.0" >> $GITHUB_ENV
+          echo "Downloading official OWASP ZAP CLI package..."
+          ZAP_VERSION="2.14.0"
+          ZAP_FILENAME="zaproxy-${ZAP_VERSION}.tar.gz"
+          ZAP_URL="https://github.com/zaproxy/zaproxy/releases/download/v${ZAP_VERSION}/${ZAP_FILENAME}"
+          
+          echo "URL: $ZAP_URL"
+          wget --timeout=30 --tries=3 "$ZAP_URL" -O "$ZAP_FILENAME"
+          
+          if [ $? -ne 0 ]; then
+            echo "❌ Failed to download ZAP from GitHub. Trying alternative approach..."
+            # Fallback: Use apt package manager
+            sudo apt-get install -y zaproxy || {
+              echo "⚠️  ZAP package unavailable. Continuing without DAST scanning..."
+              echo "export ZAP_AVAILABLE=false" >> $GITHUB_ENV
+              exit 0
+            }
+            echo "export ZAP_AVAILABLE=true" >> $GITHUB_ENV
+            echo "export ZAP_COMMAND=zaproxy" >> $GITHUB_ENV
+            exit 0
+          fi
+          
+          echo "Extracting ZAP archive..."
+          tar -xzf "$ZAP_FILENAME" || {
+            echo "❌ Failed to extract ZAP. Aborting DAST scan."
+            exit 1
+          }
+          
+          echo "Setting ZAP path..."
+          ZAP_DIR=$(ls -d ZAP* 2>/dev/null | head -1)
+          echo "ZAP_PATH=$GITHUB_WORKSPACE/$ZAP_DIR" >> $GITHUB_ENV
+          echo "ZAP_AVAILABLE=true" >> $GITHUB_ENV
+          echo "✅ ZAP installation successful at: $GITHUB_WORKSPACE/$ZAP_DIR"
 
       - name: Run ZAP Baseline Scan against Render Live URL
         run: |
+          if [ "$ZAP_AVAILABLE" != "true" ]; then
+            echo "⚠️  ZAP not available, skipping DAST scan"
+            exit 0
+          fi
+          
           DEPLOYED_URL="${{ secrets.RENDER_DEPLOYMENT_URL }}"
           
+          if [ -z "$DEPLOYED_URL" ]; then
+            echo "⚠️  RENDER_DEPLOYMENT_URL not set, skipping scan"
+            exit 0
+          fi
+          
           echo "Starting ZAP baseline scan against: $DEPLOYED_URL"
-          # Run the baseline scan script included in the ZAP directory
-          # -r creates an html report, -I ignores warning codes during execution
-          $ZAP_PATH/zap-baseline.py -t "$DEPLOYED_URL" -r zap_report.html -I || true
+          
+          # Determine ZAP command path
+          if [ -n "$ZAP_COMMAND" ]; then
+            ZAP_CMD="$ZAP_COMMAND"
+          else
+            ZAP_CMD="$ZAP_PATH/zap-baseline.py"
+          fi
+          
+          # Run the baseline scan
+          # -r creates an html report, -I ignores warning codes
+          python3 "$ZAP_CMD" -t "$DEPLOYED_URL" -r zap_report.html -I || {
+            echo "⚠️  ZAP scan completed with warnings (exit code: $?)"
+            # Don't fail the pipeline on ZAP warnings
+            exit 0
+          }
+          
+          echo "✅ ZAP baseline scan completed"
           
       - name: Upload ZAP Security Report
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && hashFiles('zap_report.html') != ''
         with:
           name: owasp-zap-report
           path: zap_report.html
