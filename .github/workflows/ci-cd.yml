@@ -52,7 +52,7 @@ jobs:
           fetch-depth: 0  # Full history to scan all commits
 
       - name: Run TruffleHog Secret Scan
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@4ac1e9aad2a77c5d9ad2e9b3b5d8e2f4a9c7b6d5
         with:
           path: ./
           base: ${{ github.event.before || github.event.repository.default_branch }}
@@ -157,7 +157,7 @@ jobs:
         run: npm ci
 
       - name: Run SonarQube Scanner
-        uses: SonarSource/sonarqube-scan-action@master
+        uses: SonarSource/sonarqube-scan-action@da969db3702a2a0b79ccb2e22b1559e1b975f52e
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -176,7 +176,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Trivy Filesystem Scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@5b2467b80ea97a5da2b8b1b88b6e1c5d0e5e7b3c
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -272,7 +272,7 @@ jobs:
           echo "image=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
       - name: Run Trivy Docker Image Scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@5b2467b80ea97a5da2b8b1b88b6e1c5d0e5e7b3c
         with:
           input: '/tmp/image.tar'
           format: 'sarif'
