@@ -57,7 +57,7 @@ jobs:
           path: ./
           base: ${{ github.event.before || github.event.repository.default_branch }}
           head: HEAD
-          extra_args: --json --fail-on-secret --all-history
+          extra_args: --json --fail
 
       - name: Alert on secret detection
         if: failure()
