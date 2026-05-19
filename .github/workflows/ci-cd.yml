@@ -406,6 +406,7 @@ jobs:
           target: ${{ secrets.RENDER_DEPLOYMENT_URL }}
           fail_action: false
           allow_issue_writing: false
+          artifact_name: ''
 
       - name: Find and copy ZAP reports
         if: always()
