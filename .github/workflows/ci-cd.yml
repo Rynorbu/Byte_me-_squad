@@ -383,10 +383,43 @@ jobs:
 
       - name: Install OWASP ZAP
         run: |
+          echo "📥 Downloading OWASP ZAP..."
+          
+          # Install Java (required for ZAP)
           sudo apt-get update -qq
-          sudo apt-get install -y -qq zaproxy openjdk-11-jre
-          echo "OWASP ZAP installed successfully"
-          zaproxy -version
+          sudo apt-get install -y -qq default-jdk-headless
+          
+          # Download ZAP from official GitHub releases
+          ZAP_VERSION="2.14.0"
+          ZAP_URL="https://github.com/zaproxy/zaproxy/releases/download/v${ZAP_VERSION}/ZAP_${ZAP_VERSION}_Linux.tar.gz"
+          
+          # Download with retries (GitHub sometimes has rate limiting)
+          for i in {1..3}; do
+            if wget -q "$ZAP_URL" -O zap.tar.gz; then
+              echo "✅ ZAP downloaded successfully"
+              break
+            elif [ $i -lt 3 ]; then
+              echo "⚠️ Download attempt $i failed, retrying..."
+              sleep 10
+            else
+              echo "❌ Failed to download ZAP after 3 attempts"
+              exit 1
+            fi
+          done
+          
+          # Extract ZAP
+          tar -xzf zap.tar.gz
+          
+          # Verify installation
+          echo "✅ OWASP ZAP extracted successfully"
+          ls -d ZAP* 2>/dev/null | head -1
+          
+          # Add ZAP to PATH
+          ZAP_HOME=$(ls -d ZAP* 2>/dev/null | head -1)
+          echo "$PWD/$ZAP_HOME" >> $GITHUB_PATH
+          
+          java -version
+          echo "✅ Java installed and ready"
 
       - name: Wait for deployment to be ready
         run: |
@@ -407,16 +440,34 @@ jobs:
           DEPLOYED_URL="${{ secrets.RENDER_DEPLOYMENT_URL }}"
           echo "🛡️ Starting OWASP ZAP baseline scan on: $DEPLOYED_URL"
           
-          zaproxy -cmd \
+          # Find ZAP installation directory
+          ZAP_HOME=$(ls -d ZAP* 2>/dev/null | head -1)
+          ZAP_CMD="$PWD/$ZAP_HOME/zap.sh"
+          
+          if [ ! -f "$ZAP_CMD" ]; then
+            echo "❌ ZAP command not found at $ZAP_CMD"
+            ls -la
+            exit 1
+          fi
+          
+          echo "📍 Using ZAP: $ZAP_CMD"
+          
+          # Run baseline scan
+          $ZAP_CMD -cmd \
             -port 8090 \
             -config api.disablekey=true \
             -config connection.timeoutInSecs=120 \
             -baseline \
             -t "$DEPLOYED_URL" \
-            -r zap_report.html || echo " ZAP scan completed with status $?"
+            -r zap_report.html || echo "⚠️ ZAP scan completed with status $?"
           
-          echo " ZAP scan completed"
-          ls -lh zap_report.html || echo " Report file not found"
+          echo "✅ ZAP scan completed"
+          if [ -f zap_report.html ]; then
+            ls -lh zap_report.html
+            echo "✅ Report generated successfully"
+          else
+            echo "⚠️ Report file not generated"
+          fi
 
       - name: Upload ZAP Report
         uses: actions/upload-artifact@v4
