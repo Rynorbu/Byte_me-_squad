@@ -370,7 +370,7 @@ jobs:
           echo " Deployment verification failed"
           exit 1
 
-  # Stage 10: OWASP ZAP DAST Security Scan
+  # Stage 11: OWASP ZAP DAST Security Scan
   owasp-zap-scan:
     name: OWASP ZAP Dynamic Security Scan
     runs-on: ubuntu-latest
@@ -381,118 +381,92 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install OWASP ZAP
-        run: |
-          echo "📥 Downloading OWASP ZAP..."
-          
-          # Install Java (required for ZAP)
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq default-jdk-headless
-          
-          # Download ZAP from official GitHub releases
-          ZAP_VERSION="2.14.0"
-          ZAP_URL="https://github.com/zaproxy/zaproxy/releases/download/v${ZAP_VERSION}/ZAP_${ZAP_VERSION}_Linux.tar.gz"
-          
-          # Download with retries (GitHub sometimes has rate limiting)
-          for i in {1..3}; do
-            if wget -q "$ZAP_URL" -O zap.tar.gz; then
-              echo "✅ ZAP downloaded successfully"
-              break
-            elif [ $i -lt 3 ]; then
-              echo "⚠️ Download attempt $i failed, retrying..."
-              sleep 10
-            else
-              echo "❌ Failed to download ZAP after 3 attempts"
-              exit 1
-            fi
-          done
-          
-          # Extract ZAP
-          tar -xzf zap.tar.gz
-          
-          # Verify installation
-          echo "✅ OWASP ZAP extracted successfully"
-          ls -d ZAP* 2>/dev/null | head -1
-          
-          # Add ZAP to PATH
-          ZAP_HOME=$(ls -d ZAP* 2>/dev/null | head -1)
-          echo "$PWD/$ZAP_HOME" >> $GITHUB_PATH
-          
-          java -version
-          echo "✅ Java installed and ready"
-
       - name: Wait for deployment to be ready
         run: |
           DEPLOYED_URL="${{ secrets.RENDER_DEPLOYMENT_URL }}"
           echo "🔍 Waiting for deployment to be ready: $DEPLOYED_URL"
-          for i in {1..10}; do
-            if curl -f -s -o /dev/null "$DEPLOYED_URL" || curl -f -s -o /dev/null "$DEPLOYED_URL/"; then
-              echo "Deployment is ready!"
+          for i in {1..15}; do
+            if curl -f -s -o /dev/null "$DEPLOYED_URL" 2>/dev/null || curl -f -s -o /dev/null "$DEPLOYED_URL/" 2>/dev/null; then
+              echo "✅ Deployment is ready!"
               exit 0
             fi
-            echo "Attempt $i/10: Deployment not ready yet, waiting..."
-            sleep 5
+            echo "Attempt $i/15: Not ready yet, waiting 10s..."
+            sleep 10
           done
-          echo " Deployment check timed out, proceeding with scan anyway"
+          echo "⚠️ Deployment readiness check timed out — proceeding with scan anyway"
 
       - name: Run OWASP ZAP Baseline Scan
-        run: |
-          DEPLOYED_URL="${{ secrets.RENDER_DEPLOYMENT_URL }}"
-          echo "🛡️ Starting OWASP ZAP baseline scan on: $DEPLOYED_URL"
-          
-          # Find ZAP installation directory
-          ZAP_HOME=$(ls -d ZAP* 2>/dev/null | head -1)
-          ZAP_CMD="$PWD/$ZAP_HOME/zap.sh"
-          
-          if [ ! -f "$ZAP_CMD" ]; then
-            echo "❌ ZAP command not found at $ZAP_CMD"
-            ls -la
-            exit 1
-          fi
-          
-          echo "📍 Using ZAP: $ZAP_CMD"
-          
-          # Run baseline scan
-          $ZAP_CMD -cmd \
-            -port 8090 \
-            -config api.disablekey=true \
-            -config connection.timeoutInSecs=120 \
-            -baseline \
-            -t "$DEPLOYED_URL" \
-            -r zap_report.html || echo "⚠️ ZAP scan completed with status $?"
-          
-          echo "✅ ZAP scan completed"
-          if [ -f zap_report.html ]; then
-            ls -lh zap_report.html
-            echo "✅ Report generated successfully"
-          else
-            echo "⚠️ Report file not generated"
-          fi
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: ${{ secrets.RENDER_DEPLOYMENT_URL }}
+          cmd_options: '-J zap-report.json -r zap-report.html'
+          fail_action: false
+          allow_issue_writing: false
 
-      - name: Upload ZAP Report
+      - name: Upload ZAP Reports
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: owasp-zap-report
-          path: zap_report.html
+          path: |
+            zap-report.html
+            zap-report.json
           retention-days: 30
           if-no-files-found: warn
 
-      - name: Display ZAP Summary
+      - name: Parse and Display ZAP Alert Summary
         if: always()
         run: |
-          echo " OWASP ZAP Scan Summary"
-          echo "========================"
-          echo "Scan Type: Baseline (Quick, Production-Safe)"
-          echo "⏱ Duration: ~2-3 minutes"
-          echo " Report: Available in Artifacts (owasp-zap-report)"
-          echo "ℹ  Status: Informational (Non-Blocking)"
+          echo "🛡️ OWASP ZAP Scan Summary"
+          echo "=================================="
+          echo "Scan Type   : Baseline (passive, production-safe)"
+          echo "Target      : ${{ secrets.RENDER_DEPLOYMENT_URL }}"
+          echo "Status      : Informational (Non-Blocking) ℹ️"
           echo ""
-          echo "Next Steps:"
-          echo "1. Download 'owasp-zap-report' artifact from GitHub Actions"
-          echo "2. Open zap_report.html in your browser"
-          echo "3. Review findings (High/Medium/Low)"
-          echo "4. Address security issues as needed"
+          
+          if [ ! -f zap-report.json ]; then
+            echo "⚠️ JSON report not found — check ZAP action logs above"
+            exit 0
+          fi
+          
+          # Install jq for JSON parsing
+          sudo apt-get update -qq > /dev/null 2>&1
+          sudo apt-get install -y -qq jq > /dev/null 2>&1
+          
+          # Count alerts by severity level
+          HIGH=$(jq '[.site[].alerts[] | select(.riskcode == "3")] | length' zap-report.json 2>/dev/null || echo 0)
+          MEDIUM=$(jq '[.site[].alerts[] | select(.riskcode == "2")] | length' zap-report.json 2>/dev/null || echo 0)
+          LOW=$(jq '[.site[].alerts[] | select(.riskcode == "1")] | length' zap-report.json 2>/dev/null || echo 0)
+          INFO=$(jq '[.site[].alerts[] | select(.riskcode == "0")] | length' zap-report.json 2>/dev/null || echo 0)
+          
+          echo "📊 Alert Counts by Severity:"
+          echo "  🔴 High   : $HIGH"
+          echo "  🟠 Medium : $MEDIUM"
+          echo "  🟡 Low    : $LOW"
+          echo "  🔵 Info   : $INFO"
+          echo ""
+          
+          # Display top vulnerabilities
+          if [ "$HIGH" -gt 0 ]; then
+            echo "⚠️ HIGH-Risk Findings:"
+            jq -r '.site[].alerts[] | select(.riskcode == "3") | "  • \(.name) - \(.count) instance(s)"' zap-report.json 2>/dev/null | head -5
+            echo ""
+          fi
+          
+          echo "📥 Reports Available:"
+          echo "  • HTML: Download 'owasp-zap-report' artifact → open zap-report.html"
+          echo "  • JSON: Use zap-report.json for programmatic analysis"
+          echo ""
+          
+          if [ "$HIGH" -gt 0 ]; then
+            echo "⚠️ ACTION REQUIRED: $HIGH HIGH-risk alert(s) found"
+            echo "   Review findings and implement remediation before next release"
+            echo ""
+          else
+            echo "✅ No HIGH-risk alerts detected — app is in good security standing!"
+          fi
+          
+          echo "📖 Visit: https://www.zaproxy.org/ for remediation guidance"
 
   # Final Status
   pipeline-status:
