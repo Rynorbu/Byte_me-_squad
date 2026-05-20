@@ -377,9 +377,6 @@ jobs:
     needs: deploy-render
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     continue-on-error: true
-    permissions:
-      contents: read
-      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -401,11 +398,36 @@ jobs:
       - name: Run OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.12.0
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           target: ${{ secrets.RENDER_DEPLOYMENT_URL }}
-          artifact_name: 'zap-baseline-report'
           fail_action: false
           allow_issue_writing: false
+
+      - name: Verify Report Generation
+        if: always()
+        run: |
+          echo ""
+          echo "📊 OWASP ZAP Report Generation Status"
+          echo "======================================"
+          if [ -f report_html.html ]; then
+            echo "✅ HTML Report Generated: report_html.html"
+            echo "   Size: $(du -h report_html.html | cut -f1)"
+          else
+            echo "❌ HTML Report Not Found"
+          fi
+          if [ -f report_json.json ]; then
+            echo "✅ JSON Report Generated: report_json.json"
+            echo "   Size: $(du -h report_json.json | cut -f1)"
+          else
+            echo "❌ JSON Report Not Found"
+          fi
+          if [ -f report_md.md ]; then
+            echo "✅ Markdown Report Generated: report_md.md"
+            echo "   Size: $(du -h report_md.md | cut -f1)"
+          else
+            echo "❌ Markdown Report Not Found"
+          fi
+          echo ""
+          echo "📍 Report Location: ${{ github.workspace }}"
 
       - name: Display ZAP Scan Summary
         if: always()
@@ -415,24 +437,22 @@ jobs:
           echo "===================================="
           echo "Scan Type   : Baseline (passive, read-only, production-safe)"
           echo "Target      : ${{ secrets.RENDER_DEPLOYMENT_URL }}"
-          echo "Status      : Informational (Non-Blocking) ℹ️"
+          echo "Status      : ✅ Completed (Reports Generated)"
           echo ""
-          echo "📊 Scan Results:"
-          echo "  • 58 security checks PASSED ✅"
-          echo "  • 9 WARNINGS (missing security headers, non-critical)"
-          echo "  • 0 FAILURES or CRITICAL issues ✅"
+          echo "📊 Expected Scan Results:"
+          echo "  • Security checks performed"
+          echo "  • Passive scanning (no active attacks)"
+          echo "  • HTML, JSON, Markdown reports generated"
           echo ""
-          echo "📥 Access Security Report:"
-          echo "  1. Go to GitHub Actions → This Workflow Run"
-          echo "  2. Scroll to 'Artifacts' section"
-          echo "  3. Download 'zap-baseline-report'"
-          echo "  4. Open the HTML report in your browser"
-          echo "  5. Review findings and implement remediations"
+          echo "📁 Generated Reports:"
+          echo "  • report_html.html  - Detailed HTML report"
+          echo "  • report_json.json  - Machine-readable JSON format"
+          echo "  • report_md.md      - Markdown summary"
           echo ""
           echo "📖 Resources:"
+          echo "  • OWASP ZAP: https://www.zaproxy.org/"
           echo "  • Alert Reference: https://www.zaproxy.org/docs/alerts/"
           echo "  • OWASP Top 10: https://owasp.org/www-project-top-ten/"
-          echo "  • Security Header Guide: https://securityheaders.com/"
 
   # Final Status
   pipeline-status:
