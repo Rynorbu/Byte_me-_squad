@@ -61,8 +61,8 @@ jobs:
       - name: Alert on secret detection
         if: failure()
         run: |
-          echo "❌ PIPELINE BLOCKED: Secrets detected in commit history!"
-          echo "🔍 Actions to take:"
+          echo " PIPELINE BLOCKED: Secrets detected in commit history!"
+          echo " Actions to take:"
           echo "1. Identify and remove the secret from your code"
           echo "2. Rotate the exposed credential immediately"
           echo "3. Use 'git filter-branch' or 'git-filter-repo' to remove from history"
@@ -194,7 +194,7 @@ jobs:
       - name: Fail on critical vulnerabilities
         run: |
           if grep -q '"level": "CRITICAL"' trivy-fs-results.sarif; then
-            echo "❌ Critical vulnerabilities found in filesystem scan!"
+            echo "Critical vulnerabilities found in filesystem scan!"
             exit 1
           fi
 
@@ -289,7 +289,7 @@ jobs:
       - name: Fail on critical vulnerabilities
         run: |
           if grep -q '"level": "CRITICAL"' trivy-docker-results.sarif; then
-            echo "❌ Critical vulnerabilities found in Docker image!"
+            echo "Critical vulnerabilities found in Docker image!"
             exit 1
           fi
 
@@ -388,22 +388,22 @@ jobs:
       - name: Wait for deployment readiness
         run: |
           DEPLOYED_URL="${{ secrets.RENDER_DEPLOYMENT_URL }}"
-          echo "🔍 Waiting for deployment to be ready: $DEPLOYED_URL"
+          echo " Waiting for deployment to be ready: $DEPLOYED_URL"
           for i in {1..15}; do
             if curl -f -s "$DEPLOYED_URL" > /dev/null 2>&1; then
-              echo "✅ Deployment is ready!"
+              echo "Deployment is ready!"
               exit 0
             fi
             echo "Attempt $i/15: Not ready yet, waiting 10s..."
             sleep 10
           done
-          echo "⚠️ Deployment not responding, proceeding with scan anyway"
+          echo "Deployment not responding, proceeding with scan anyway"
 
       - name: Prepare ZAP workspace
         run: |
           mkdir -p ./zap-reports
           chmod -R 777 ./zap-reports
-          echo "✅ ZAP workspace prepared"
+          echo "ZAP workspace prepared"
 
       - name: Run OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.14.0
@@ -430,24 +430,18 @@ jobs:
         if: always()
         run: |
           echo ""
-          echo "🛡️ OWASP ZAP Baseline Scan Summary"
+          echo "OWASP ZAP Baseline Scan Summary"
           echo "===================================="
           echo "Scan Type   : Baseline (passive, read-only, production-safe)"
           echo "Target      : ${{ secrets.RENDER_DEPLOYMENT_URL }}"
-          echo "Status      : ✅ Completed"
-          echo ""
-          echo "📊 Scan Results:"
-          echo "  • 58 security checks PASSED ✅"
-          echo "  • 9 WARNINGS (missing security headers, non-critical)"
-          echo "  • 0 FAILURES or CRITICAL issues ✅"
-          echo ""
-          echo "📥 Access Security Reports:"
+          echo "Status      : Completed"
+          echo "Access Security Reports:"
           echo "  1. Go to GitHub Actions → This Workflow Run"
           echo "  2. Scroll to 'Artifacts' section"
           echo "  3. Download 'zap-security-report'"
           echo "  4. Extract and open report_html.html in your browser"
           echo ""
-          echo "📖 Security Resources:"
+          echo "Security Resources:"
           echo "  • OWASP ZAP: https://www.zaproxy.org/"
           echo "  • Alert Reference: https://www.zaproxy.org/docs/alerts/"
           echo "  • OWASP Top 10: https://owasp.org/www-project-top-ten/"
@@ -462,10 +456,10 @@ jobs:
       - name: Check pipeline status
         run: |
           if [ "${{ needs.deploy-render.result }}" == "failure" ]; then
-            echo "❌ Deployment failed"
+            echo "Deployment failed"
             exit 1
           fi
-          echo "✅ 10-Stage CI/CD Pipeline completed successfully!"
+          echo " 10-Stage CI/CD Pipeline completed successfully!"
           echo "   Stage 1: Clone Repository"
           echo "   Stage 2: Secret Scanning"
           echo "   Stage 3: Install & Test"
@@ -476,4 +470,4 @@ jobs:
           echo "   Stage 8: Trivy Docker Scan"
           echo "   Stage 9: Push to Docker Hub"
           echo "   Stage 10: Deploy to Render"
-          echo "   Stage 11: OWASP ZAP DAST Scan ✅"
+          echo "   Stage 11: OWASP ZAP DAST Scan"

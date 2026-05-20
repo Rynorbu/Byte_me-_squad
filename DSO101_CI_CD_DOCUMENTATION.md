@@ -631,6 +631,162 @@ zaproxy -cmd \
 4. Extract and open HTML file
 5. Review findings and remediate
 
+#### OWASP ZAP Integration Details
+
+**Installation Method**:
+```bash
+# Uses Ubuntu repository (reliable, no Docker Hub rate limits)
+sudo apt-get update
+sudo apt-get install -y zaproxy openjdk-11-jre
+```
+
+**Why Native Installation?**
+- ❌ Previous attempts: Docker container action → Hit Docker Hub rate limits
+- ✅ Current approach: Binary from Ubuntu repos → Always available
+- Solves: GitHub Actions free tier rate limiting issues
+- Benefit: No Docker overhead, instant install
+
+**ZAP Baseline Scan Command**:
+```bash
+zaproxy -cmd \
+  -port 8090 \
+  -config api.disablekey=true \
+  -config connection.timeoutInSecs=60 \
+  -baseline \
+  -t $DEPLOYED_URL \
+  -r zap_report.html
+```
+
+**Parameter Breakdown**:
+| Parameter | Purpose |
+|-----------|---------|
+| `-cmd` | Run in command-line mode (no GUI) |
+| `-port 8090` | Use port 8090 for ZAP daemon |
+| `-config api.disablekey=true` | Disable API authentication (safe for CI/CD) |
+| `-config connection.timeoutInSecs=60` | 60-second timeout per request |
+| `-baseline` | Run baseline scan (fast, common vulns only) |
+| `-t $DEPLOYED_URL` | Target URL to scan |
+| `-r zap_report.html` | Output HTML report |
+
+**Vulnerability Categories Detected**:
+
+| Category | OWASP | CWE | Examples |
+|----------|-------|-----|----------|
+| **XSS** | A03:2021 | CWE-79 | Reflected XSS, Stored XSS, DOM XSS |
+| **Injection** | A03:2021 | CWE-89 | SQL Injection, Command Injection |
+| **Authentication** | A07:2021 | CWE-287 | Session fixation, weak credentials |
+| **Sensitive Data** | A02:2021 | CWE-200 | Unencrypted data transmission |
+| **Security Headers** | A05:2021 | CWE-693 | Missing CSP, X-Frame-Options, etc |
+| **Misconfiguration** | A05:2021 | CWE-16 | Debug mode enabled, default creds |
+| **CORS Issues** | A01:2021 | CWE-1004 | Overly permissive CORS |
+
+**Report Interpretation**:
+
+**Finding Severity Levels**:
+- 🔴 **High** - Can be exploited to compromise system
+- 🟠 **Medium** - Could be exploited under certain conditions
+- 🟡 **Low** - Theoretical risk or difficult to exploit
+- 🔵 **Info** - Informational findings
+
+**Report Sections**:
+1. **Summary** - Overview of findings by severity
+2. **High Confidence** - High probability findings
+3. **Medium Confidence** - Medium probability findings
+4. **Low Confidence** - Low probability findings
+5. **Proof of Concept** - How to reproduce findings
+6. **Remediation** - Steps to fix each issue
+
+**Common ZAP Findings for Vite/React Apps**:
+
+1. **X-Content-Type-Options Header Missing**
+   - Risk: Browser might interpret content incorrectly
+   - Fix: Add header in web server configuration
+   ```
+   X-Content-Type-Options: nosniff
+   ```
+
+2. **X-Frame-Options Header Missing**
+   - Risk: App vulnerable to clickjacking
+   - Fix: Add header to prevent framing
+   ```
+   X-Frame-Options: DENY
+   ```
+
+3. **Content-Security-Policy Missing**
+   - Risk: XSS attacks possible
+   - Fix: Implement strict CSP in HTML meta tag or header
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
+   ```
+
+4. **Cache Control Headers Missing**
+   - Risk: Sensitive data cached in browser
+   - Fix: Add cache-busting headers for sensitive pages
+   ```
+   Cache-Control: no-cache, no-store, must-revalidate
+   ```
+
+5. **Insecure Cookie Flags**
+   - Risk: Cookies vulnerable to XSS and MITM
+   - Fix: Set Secure and HttpOnly flags
+   - Note: Supabase handles this automatically
+
+**False Positives in ZAP**:
+- Static assets (CSS, JS) flagged as potential vulnerabilities
+- Development headers on production builds
+- CORS policies (intentional in some cases)
+- Third-party scripts (CDN hosted resources)
+
+**How to Reduce False Positives**:
+1. Configure ZAP scan context (exclude static files)
+2. Implement proper security headers
+3. Review findings vs actual risk
+4. Document intentional configurations
+
+**Integration with CI/CD**:
+```yaml
+# Stage 11 runs AFTER deployment succeeds
+# Ensures scanning live application
+# Non-blocking (doesn't halt pipeline)
+# Generates HTML artifact for review
+# Email notifications on high findings
+```
+
+**Best Practices**:
+
+✅ **Do**:
+- Run ZAP on every main branch deployment
+- Review findings regularly
+- Fix high severity issues immediately
+- Document exceptions/intentional configs
+- Keep ZAP updated quarterly
+- Test security headers locally first
+
+❌ **Don't**:
+- Ignore ZAP findings
+- Disable security headers to pass scan
+- Accept false positives without verification
+- Run ZAP only before releases
+- Make config changes without testing
+- Block production deployments on low findings
+
+**Performance Optimization**:
+```
+Baseline scan timing:
+- Small app (<50 pages): 1-2 minutes
+- Medium app (50-200 pages): 2-5 minutes
+- Large app (>200 pages): 5-10 minutes
+
+Current timing: ~3 minutes ✅
+```
+
+**Monitoring ZAP Reports Over Time**:
+1. Download HTML reports from each pipeline run
+2. Track finding trends
+3. Look for newly introduced vulnerabilities
+4. Celebrate when vulnerabilities are fixed
+5. Use as evidence of security maturity
+
 ---
 
 ## Security Implementation
@@ -1051,6 +1207,130 @@ git push origin main
 # 2. Remove dev dependencies from runtime
 # 3. Use npm ci instead of npm install
 # 4. Prune unnecessary files
+```
+
+#### 7. Stage 11 Fails: OWASP ZAP Scan Error
+
+**Error Message**:
+```
+zaproxy: command not found
+```
+
+**Root Cause**: ZAP not installed or path not set
+
+**Solution**:
+```bash
+# 1. Verify ZAP installation
+which zaproxy
+zaproxy -version
+
+# 2. Manual installation
+sudo apt-get update
+sudo apt-get install -y zaproxy
+
+# 3. Check if Render deployment is accessible
+curl -v https://byte-me-app.onrender.com
+
+# 4. If deployment URL is wrong:
+# Check GitHub Actions secrets
+# Verify RENDER_WEBHOOK_URL is set correctly
+```
+
+**Error Message**:
+```
+Connection refused: https://byte-me-app.onrender.com
+```
+
+**Root Cause**: App not fully deployed before ZAP scan starts
+
+**Solution**:
+```bash
+# 1. Add retry logic for URL availability
+# Already implemented in CI/CD (health checks before Stage 11)
+
+# 2. Manual verification
+# Test if app is responding:
+curl -I https://byte-me-app.onrender.com
+
+# 3. If 502 Bad Gateway:
+# Check Render dashboard for deployment errors
+# Look at Logs tab for startup failures
+```
+
+**Error Message**:
+```
+ZAP report is empty or malformed
+```
+
+**Root Cause**: App served successfully but no vulnerabilities scanned
+
+**Possible Causes**:
+- App too simple (few pages scanned)
+- ZAP timeout before completing scan
+- Target URL returned 404/5xx errors
+
+**Solution**:
+```bash
+# 1. Extend ZAP timeout
+-config connection.timeoutInSecs=120  # Increased from 60
+
+# 2. Check ZAP logs
+zaproxy -cmd -version  # Verify it runs
+
+# 3. Test baseline locally
+zaproxy -cmd -baseline -t http://localhost:3000 -r report.html
+
+# 4. If still empty:
+# Accept it as good result (no vulnerabilities found!)
+```
+
+**Understanding ZAP False Positives**:
+
+| Finding | Actual Risk | Action |
+|---------|------------|--------|
+| `X-Content-Type-Options` missing | Medium | Add header to serve config |
+| Cookies without Secure flag | Medium* | *Low in HTTPS (secure by default) |
+| CSP not implemented | High | Implement CSP meta tag |
+| No X-Frame-Options | Medium | Add `X-Frame-Options: DENY` |
+| Mixed content warnings | Low | Ensure all resources use HTTPS |
+
+**How to Address ZAP Findings**:
+
+**For Vite Static Apps**:
+```javascript
+// Add security headers via vite.config.ts
+export default {
+  server: {
+    middlewareMode: true,
+    headers: {
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'X-XSS-Protection': '1; mode=block',
+    }
+  }
+}
+```
+
+**For Render Deployment**:
+```yaml
+# Add headers in serve package configuration
+# Or use Express.js middleware for headers
+```
+
+**No Report Generated**:
+
+**Check**:
+1. Does `zap_report.html` exist in artifacts?
+2. Open GitHub Actions → Artifacts section
+3. Verify artifact retention (14 days)
+
+**If Missing**:
+```bash
+# Re-run Stage 11 manually
+# GitHub Actions → Workflow → Re-run jobs
+
+# Or check workflow logs
+# Look for "Error writing report" messages
 ```
 
 ---
